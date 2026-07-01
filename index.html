@@ -37,49 +37,25 @@
             background: linear-gradient(90deg, var(--pink), var(--cyan));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 25px rgba(255,45,149,0.8);
-        }
-        .search {
-            flex: 1;
-            margin: 0 16px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,45,149,0.4);
-            border-radius: 30px;
-            padding: 12px 20px;
-            color: white;
         }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">КИНО</div>
-        <input type="text" id="searchInput" class="search" placeholder="🔍 Поиск фильмов...">
     </div>
 
     <script>
-        let allMovies = [];
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hcwhr8uypBI8Ha2rI1dyaLdA5DVY3ffjfHzNoUlvnfqMOjMmD7Fe1yrTRzwxhCI3Us4XmBBRUisD/pub?output=csv";
 
         async function loadMovies() {
             try {
                 const res = await fetch(CSV_URL);
                 const text = await res.text();
-                allMovies = text.trim().split('\n').slice(1).map(line => {
-                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return {
-                        id: cols[0],
-                        title: cols[1],
-                        genre: cols[2],
-                        year: cols[3],
-                        rating: cols[4],
-                        description: cols[5],
-                        posterUrl: cols[6],
-                        youtubeId: cols[7]
-                    };
-                }).filter(m => m.title);
-                alert(`Загружено ${allMovies.length} фильмов!`);
+                const count = text.trim().split('\n').length - 1;
+                document.body.innerHTML += `<h2 style="text-align:center;margin-top:50px;">Загружено ${count} фильмов!</h2>`;
             } catch(e) {
-                alert("Ошибка загрузки базы");
+                document.body.innerHTML += `<p style="color:red;text-align:center;">Ошибка загрузки</p>`;
             }
         }
 
@@ -87,4 +63,4 @@
         loadMovies();
     </script>
 </body>
-</html>
+</html>  
