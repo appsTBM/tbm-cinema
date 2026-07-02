@@ -7,95 +7,103 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { background:#0a0a14; color:white; font-family:sans-serif; margin:0; }
-        .header { padding:12px 16px; background:rgba(10,10,20,0.95); display:flex; justify-content:space-between; align-items:center; }
-        .logo { font-size:28px; font-weight:900; background:linear-gradient(#ff2d95,#00d4ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .header { padding:12px 16px; background:rgba(10,10,20,0.95); display:flex; align-items:center; gap:12px; }
+        .logo { font-size:26px; font-weight:900; background:linear-gradient(#ff2d95,#00d4ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .search { flex:1; background:#1a1a30; border:none; padding:10px 16px; border-radius:25px; color:white; font-size:15px; }
+        .genres { display:flex; gap:8px; padding:0 16px 12px; overflow-x:auto; }
+        .genre-btn { padding:6px 16px; border-radius:20px; background:#1a1a30; border:1px solid #444; color:#ccc; white-space:nowrap; }
+        .genre-btn.active { background:#ff2d95; color:white; border:none; }
         .movies { display:flex; flex-wrap:wrap; gap:12px; padding:16px; }
-        .movie-card { width:140px; background:#1a1a30; border-radius:12px; overflow:hidden; cursor:pointer; }
+        .movie-card { width:140px; background:#1a1a30; border-radius:12px; overflow:hidden; cursor:pointer; box-shadow:0 4px 15px rgba(0,0,0,0.4); }
         .movie-card img { width:100%; height:200px; object-fit:cover; }
-        .movie-card .info { padding:8px; font-size:13px; }
-        
-        /* Плеер */
-        .player {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: #000;
-            z-index: 1000;
-            flex-direction: column;
-        }
-        .player iframe {
-            width: 100%;
-            flex: 1;
-        }
-        .close-player {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255,255,255,0.9);
-            color: black;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 24px;
-            cursor: pointer;
-            z-index: 1001;
-        }
+        .movie-card .info { padding:10px; font-size:13px; }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">TBM CINEMA</div>
+        <input type="text" id="searchInput" class="search" placeholder="Поиск фильмов...">
     </div>
+
+    <div class="genres" id="genres"></div>
     <div class="movies" id="movies"></div>
 
-    <!-- Плеер -->
-    <div class="player" id="player">
-        <button class="close-player" onclick="closePlayer()">✕</button>
-        <iframe id="youtubePlayer" frameborder="0" allowfullscreen></iframe>
+    <div class="player" id="player" style="display:none; position:fixed; inset:0; background:#000; z-index:1000; flex-direction:column;">
+        <button onclick="closePlayer()" style="position:absolute;top:15px;right:15px;background:white;color:black;border:none;width:40px;height:40px;border-radius:50%;font-size:24px;">✕</button>
+        <iframe id="ytPlayer" frameborder="0" allowfullscreen style="width:100%;flex:1;"></iframe>
     </div>
 
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hcwhr8uypBI8Ha2rI1dyaLdA5DVY3ffjfHzNoUlvnfqMOjMmD7Fe1yrTRzwxhCI3Us4XmBBRUisD/pub?output=csv";
+        let allMovies = [];
 
         async function loadMovies() {
-            const container = document.getElementById('movies');
-            try {
-                const res = await fetch(CSV_URL);
-                const text = await res.text();
-                const lines = text.trim().split('\n');
-                
-                const movies = lines.slice(1).map(line => {
-                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return {
-                        title: cols[1] || '',
-                        year: cols[3] || '',
-                        posterUrl: cols[6] || '',
-                        youtubeId: cols[7] || ''
-                    };
-                }).filter(m => m.title && m.youtubeId);
+            const res = await fetch(CSV_URL);
+            const text = await res.text();
+            const lines = text.trim().split('\n');
+            
+            allMovies = lines.slice(1).map(line => {
+                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                return {
+                    title: cols[1] || '',
+                    genre: cols[2] || 'classic',
+                    year: cols[3] || '',
+                    posterUrl: cols[6] || '',
+                    youtubeId: cols[7] || ''
+                };
+            }).filter(m => m.title && m.youtubeId);
 
-                container.innerHTML = movies.map(m => `
-                    <div class="movie-card" onclick="playMovie('${m.youtubeId}')">
-                        <img src="${m.posterUrl}" onerror="this.src='https://via.placeholder.com/140x200/1a1a30/ffffff?text=${encodeURIComponent(m.title)}'">
-                        <div class="info"><strong>${m.title}</strong><br><small>${m.year}</small></div>
-                    </div>
-                `).join('');
-            } catch(e) {
-                container.innerHTML = '<p style="color:red;padding:20px">Ошибка загрузки</p>';
-            }
+            renderGenres();
+            renderMovies(allMovies);
+
+            // Поиск
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const filtered = allMovies.filter(m => m.title.toLowerCase().includes(term));
+                renderMovies(filtered);
+            });
+        }
+
+        function renderGenres() {
+            const genresDiv = document.getElementById('genres');
+            const genres = ['all', 'horror', 'comedy', 'drama', 'thriller', 'scifi', 'classic'];
+            genresDiv.innerHTML = genres.map(g => `
+                <button class="genre-btn ${g==='all'?'active':''}" data-genre="${g}">
+                    ${g === 'all' ? 'Все' : g}
+                </button>
+            `).join('');
+
+            genresDiv.addEventListener('click', (e) => {
+                if (e.target.classList.contains('genre-btn')) {
+                    document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    const genre = e.target.dataset.genre;
+                    const filtered = genre === 'all' ? allMovies : allMovies.filter(m => m.genre === genre);
+                    renderMovies(filtered);
+                }
+            });
+        }
+
+        function renderMovies(movies) {
+            const container = document.getElementById('movies');
+            container.innerHTML = movies.map(m => `
+                <div class="movie-card" onclick="playMovie('${m.youtubeId}')">
+                    <img src="${m.posterUrl}" onerror="this.src='https://via.placeholder.com/140x200/1a1a30/ffffff?text=${encodeURIComponent(m.title)}'">
+                    <div class="info"><strong>${m.title}</strong><br><small>${m.year}</small></div>
+                </div>
+            `).join('');
         }
 
         function playMovie(youtubeId) {
             const player = document.getElementById('player');
-            const iframe = document.getElementById('youtubePlayer');
+            const iframe = document.getElementById('ytPlayer');
             iframe.src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`;
             player.style.display = 'flex';
         }
 
         function closePlayer() {
             const player = document.getElementById('player');
-            const iframe = document.getElementById('youtubePlayer');
+            const iframe = document.getElementById('ytPlayer');
             iframe.src = '';
             player.style.display = 'none';
         }
