@@ -13,6 +13,34 @@
         .movie-card { width:140px; background:#1a1a30; border-radius:12px; overflow:hidden; cursor:pointer; }
         .movie-card img { width:100%; height:200px; object-fit:cover; }
         .movie-card .info { padding:8px; font-size:13px; }
+        
+        /* Плеер */
+        .player {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #000;
+            z-index: 1000;
+            flex-direction: column;
+        }
+        .player iframe {
+            width: 100%;
+            flex: 1;
+        }
+        .close-player {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.9);
+            color: black;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1001;
+        }
     </style>
 </head>
 <body>
@@ -20,6 +48,12 @@
         <div class="logo">TBM CINEMA</div>
     </div>
     <div class="movies" id="movies"></div>
+
+    <!-- Плеер -->
+    <div class="player" id="player">
+        <button class="close-player" onclick="closePlayer()">✕</button>
+        <iframe id="youtubePlayer" frameborder="0" allowfullscreen></iframe>
+    </div>
 
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hcwhr8uypBI8Ha2rI1dyaLdA5DVY3ffjfHzNoUlvnfqMOjMmD7Fe1yrTRzwxhCI3Us4XmBBRUisD/pub?output=csv";
@@ -42,7 +76,7 @@
                 }).filter(m => m.title && m.youtubeId);
 
                 container.innerHTML = movies.map(m => `
-                    <div class="movie-card" onclick="watch('${m.youtubeId}')">
+                    <div class="movie-card" onclick="playMovie('${m.youtubeId}')">
                         <img src="${m.posterUrl}" onerror="this.src='https://via.placeholder.com/140x200/1a1a30/ffffff?text=${encodeURIComponent(m.title)}'">
                         <div class="info"><strong>${m.title}</strong><br><small>${m.year}</small></div>
                     </div>
@@ -52,8 +86,18 @@
             }
         }
 
-        function watch(id) {
-            window.open(`https://www.youtube.com/embed/${id}?autoplay=1`, '_blank');
+        function playMovie(youtubeId) {
+            const player = document.getElementById('player');
+            const iframe = document.getElementById('youtubePlayer');
+            iframe.src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`;
+            player.style.display = 'flex';
+        }
+
+        function closePlayer() {
+            const player = document.getElementById('player');
+            const iframe = document.getElementById('youtubePlayer');
+            iframe.src = '';
+            player.style.display = 'none';
         }
 
         window.Telegram.WebApp.ready();
