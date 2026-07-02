@@ -34,38 +34,9 @@
             overflow:hidden; min-height:48px;
         }
         
-        /* Плеер - исправленный */
-        .player {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: #000;
-            z-index: 1000;
-            flex-direction: column;
-        }
-        .player-header {
-            padding: 12px 16px;
-            background: #111;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        .player iframe {
-            width: 100%;
-            flex: 1;
-            min-height: 0;
-        }
-        .close-player {
-            background: #333;
-            color: white;
-            border: none;
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            font-size: 22px;
-            cursor: pointer;
-        }
+        .player { display:none; position:fixed; inset:0; background:#000; z-index:1000; flex-direction:column; }
+        .player-header { padding:12px 16px; background:#111; display:flex; justify-content:space-between; align-items:center; }
+        .close-player { background:#333; color:white; border:none; width:38px; height:38px; border-radius:50%; font-size:22px; cursor:pointer; }
     </style>
 </head>
 <body>
@@ -74,11 +45,12 @@
         <input type="text" id="searchInput" class="search" placeholder="Поиск фильмов...">
     </div>
 
+    <!-- Hero -->
     <div class="hero" id="hero">
         <div class="hero-content">
             <h2 id="heroTitle" style="margin:0 0 6px 0; font-size:26px;"></h2>
             <p id="heroDesc" style="margin:0 0 14px 0; opacity:0.85; font-size:14px;"></p>
-            <button onclick="watchHero()" style="background:#ff2d95;color:white;border:none;padding:12px 28px;border-radius:30px;font-weight:bold;">▶ Смотреть</button>
+            <button onclick="watchHero()" style="background:#ff2d95; color:white; border:none; padding:12px 28px; border-radius:30px; font-weight:bold;">▶ Смотреть</button>
         </div>
     </div>
 
@@ -91,13 +63,23 @@
             <div id="playerTitle" style="font-size:17px; font-weight:600; flex:1; padding-right:10px;"></div>
             <button class="close-player" onclick="closePlayer()">✕</button>
         </div>
-        <iframe id="ytPlayer" frameborder="0" allowfullscreen></iframe>
+        <div style="flex:1; position:relative; background:#000;">
+            <iframe id="ytPlayer" frameborder="0" allowfullscreen style="width:100%; height:100%; position:absolute; top:0; left:0;"></iframe>
+            
+            <div id="playerError" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#ccc;">
+                <p style="margin-bottom:16px;">Не удалось воспроизвести видео</p>
+                <button onclick="openOnYouTube()" style="background:#ff2d95; color:white; border:none; padding:10px 24px; border-radius:25px; font-weight:bold;">
+                    Открыть на YouTube
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hcwhr8uypBI8Ha2rI1dyaLdA5DVY3ffjfHzNoUlvnfqMOjMmD7Fe1yrTRzwxhCI3Us4XmBBRUisD/pub?output=csv";
         let allMovies = [];
         let currentHeroIndex = 0;
+        let currentYoutubeId = '';
 
         async function loadMovies() {
             const res = await fetch(CSV_URL);
@@ -181,14 +163,19 @@
         }
 
         function playMovie(youtubeId) {
+            currentYoutubeId = youtubeId;
             const player = document.getElementById('player');
             const iframe = document.getElementById('ytPlayer');
             const titleEl = document.getElementById('playerTitle');
+            const errorEl = document.getElementById('playerError');
 
             const movie = allMovies.find(m => m.youtubeId === youtubeId);
             titleEl.textContent = movie ? `${movie.title} (${movie.year})` : "Фильм";
 
-            iframe.src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`;
+            errorEl.style.display = 'none';
+            iframe.style.display = 'block';
+            iframe.src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1`;
+
             player.style.display = 'flex';
         }
 
@@ -201,6 +188,13 @@
             const iframe = document.getElementById('ytPlayer');
             iframe.src = '';
             player.style.display = 'none';
+        }
+
+        function openOnYouTube() {
+            if (currentYoutubeId) {
+                window.open(`https://www.youtube.com/watch?v=${currentYoutubeId}`, '_blank');
+                closePlayer();
+            }
         }
 
         window.Telegram.WebApp.ready();
