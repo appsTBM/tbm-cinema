@@ -38,12 +38,32 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        .movies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 16px;
+        }
+        .movie-card {
+            background: var(--card);
+            border-radius: 12px;
+            overflow: hidden;
+            width: 140px;
+            cursor: pointer;
+        }
+        .movie-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">TBM CINEMA</div>
     </div>
+
+    <div class="movies" id="movies"></div>
 
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hcwhr8uypBI8Ha2rI1dyaLdA5DVY3ffjfHzNoUlvnfqMOjMmD7Fe1yrTRzwxhCI3Us4XmBBRUisD/pub?output=csv";
@@ -52,15 +72,31 @@
             try {
                 const res = await fetch(CSV_URL);
                 const text = await res.text();
-                const count = text.trim().split('\n').length - 1;
-                document.body.innerHTML += `
-                    <div style="text-align:center;margin-top:80px;">
-                        <h2>🎬 Загружено ${count} фильмов!</h2>
-                        <p style="margin-top:20px;color:#aaa;">Mini App готов к использованию</p>
-                    </div>`;
+                const lines = text.trim().split('\n');
+                const movies = lines.slice(1).map(line => {
+                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    return {
+                        title: cols[1],
+                        year: cols[3],
+                        posterUrl: cols[6],
+                        youtubeId: cols[7]
+                    };
+                }).filter(m => m.title);
+
+                const container = document.getElementById('movies');
+                container.innerHTML = movies.map(movie => `
+                    <div class="movie-card" onclick="watch('${movie.youtubeId}')">
+                        <img src="${movie.posterUrl || 'https://via.placeholder.com/140x200?text=No+Poster'}" onerror="this.src='https://via.placeholder.com/140x200/333/fff?text=${encodeURIComponent(movie.title)}'">
+                        <div style="padding:8px;font-size:13px;">${movie.title} (${movie.year})</div>
+                    </div>
+                `).join('');
             } catch(e) {
-                document.body.innerHTML += `<p style="color:red;text-align:center;">Ошибка загрузки</p>`;
+                console.error(e);
             }
+        }
+
+        function watch(youtubeId) {
+            window.open(`https://www.youtube.com/embed/${youtubeId}?autoplay=1`, '_blank');
         }
 
         window.Telegram.WebApp.ready();
