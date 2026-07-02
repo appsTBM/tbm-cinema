@@ -9,28 +9,28 @@
         body { background:#0a0a14; color:white; font-family:sans-serif; margin:0; }
         .header { padding:12px 16px; background:rgba(10,10,20,0.95); display:flex; align-items:center; gap:12px; }
         .logo { font-size:26px; font-weight:900; background:linear-gradient(#ff2d95,#00d4ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-        .search { flex:1; background:#1a1a30; border:none; padding:10px 16px; border-radius:25px; color:white; font-size:15px; }
+        .search { flex:1; background:#1a1a30; border:none; padding:10px 16px; border-radius:25px; color:white; }
         
         .hero {
-            height: 340px;
+            height: 360px;
             background-size: cover;
             background-position: center;
             position: relative;
             display: flex;
             align-items: flex-end;
             padding: 24px;
-            margin-bottom: 16px;
+            transition: background-image 1s ease-in-out;
         }
         .hero::after {
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(transparent, #0a0a14 80%);
+            background: linear-gradient(transparent, #0a0a14 82%);
         }
-        .hero-content { position: relative; z-index: 2; max-width: 80%; }
+        .hero-content { position: relative; z-index: 2; max-width: 85%; }
         
         .genres { display:flex; gap:8px; padding:0 16px 14px; overflow-x:auto; }
-        .genre-btn { padding:7px 18px; border-radius:20px; background:#1a1a30; border:1px solid #444; color:#ccc; white-space:nowrap; }
+        .genre-btn { padding:7px 18px; border-radius:20px; background:#1a1a30; border:1px solid #444; color:#ccc; }
         .genre-btn.active { background:#ff2d95; color:white; border:none; }
         
         .movies { display:flex; flex-wrap:wrap; gap:14px; padding:0 16px 40px; }
@@ -57,8 +57,8 @@
     <!-- Hero -->
     <div class="hero" id="hero">
         <div class="hero-content">
-            <h2 id="heroTitle" style="margin:0 0 6px 0;"></h2>
-            <p id="heroDesc" style="margin:0 0 12px 0; opacity:0.85; font-size:14px;"></p>
+            <h2 id="heroTitle" style="margin:0 0 6px 0; font-size:26px;"></h2>
+            <p id="heroDesc" style="margin:0 0 14px 0; opacity:0.85; font-size:14px;"></p>
             <button onclick="watchHero()" style="background:#ff2d95; color:white; border:none; padding:12px 28px; border-radius:30px; font-weight:bold;">▶ Смотреть</button>
         </div>
     </div>
@@ -78,7 +78,8 @@
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hcwhr8uypBI8Ha2rI1dyaLdA5DVY3ffjfHzNoUlvnfqMOjMmD7Fe1yrTRzwxhCI3Us4XmBBRUisD/pub?output=csv";
         let allMovies = [];
-        let currentHero = null;
+        let currentHeroIndex = 0;
+        let heroInterval = null;
 
         async function loadMovies() {
             const res = await fetch(CSV_URL);
@@ -96,8 +97,8 @@
                 };
             }).filter(m => m.title && m.youtubeId);
 
-            // Hero
-            setHero();
+            // Запускаем Hero с автосменой
+            startHeroRotation();
 
             renderGenres();
             renderMovies(allMovies);
@@ -110,12 +111,30 @@
             });
         }
 
-        function setHero() {
-            currentHero = allMovies[Math.floor(Math.random() * allMovies.length)];
+        function startHeroRotation() {
+            if (allMovies.length === 0) return;
+
+            // Показываем первый фильм сразу
+            showHeroMovie(0);
+
+            // Меняем каждые 8 секунд
+            heroInterval = setInterval(() => {
+                currentHeroIndex = (currentHeroIndex + 1) % allMovies.length;
+                showHeroMovie(currentHeroIndex);
+            }, 8000);
+        }
+
+        function showHeroMovie(index) {
+            const movie = allMovies[index];
+            if (!movie) return;
+
             const hero = document.getElementById('hero');
-            hero.style.backgroundImage = `url('${currentHero.posterUrl}')`;
-            document.getElementById('heroTitle').textContent = currentHero.title;
-            document.getElementById('heroDesc').textContent = currentHero.year + " • " + currentHero.genre;
+            hero.style.backgroundImage = `url('${movie.posterUrl}')`;
+            document.getElementById('heroTitle').textContent = movie.title;
+            document.getElementById('heroDesc').textContent = `${movie.year} • ${movie.genre}`;
+            
+            // Сохраняем текущий фильм для кнопки "Смотреть"
+            window.currentHeroMovie = movie;
         }
 
         function renderGenres() {
@@ -161,7 +180,9 @@
         }
 
         function watchHero() {
-            if (currentHero) playMovie(currentHero.youtubeId);
+            if (window.currentHeroMovie) {
+                playMovie(window.currentHeroMovie.youtubeId);
+            }
         }
 
         function closePlayer() {
