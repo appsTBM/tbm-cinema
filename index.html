@@ -10,13 +10,44 @@
         .header { padding:12px 16px; background:rgba(10,10,20,0.95); display:flex; align-items:center; gap:12px; }
         .logo { font-size:26px; font-weight:900; background:linear-gradient(#ff2d95,#00d4ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
         .search { flex:1; background:#1a1a30; border:none; padding:10px 16px; border-radius:25px; color:white; font-size:15px; }
-        .genres { display:flex; gap:8px; padding:0 16px 12px; overflow-x:auto; }
-        .genre-btn { padding:6px 16px; border-radius:20px; background:#1a1a30; border:1px solid #444; color:#ccc; white-space:nowrap; }
+        
+        .hero {
+            height: 320px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(transparent, #0a0a14 75%);
+        }
+        .hero-content { position: relative; z-index: 2; }
+        
+        .genres { display:flex; gap:8px; padding:0 16px 14px; overflow-x:auto; }
+        .genre-btn { padding:7px 18px; border-radius:20px; background:#1a1a30; border:1px solid #444; color:#ccc; white-space:nowrap; font-size:14px; }
         .genre-btn.active { background:#ff2d95; color:white; border:none; }
-        .movies { display:flex; flex-wrap:wrap; gap:12px; padding:16px; }
-        .movie-card { width:140px; background:#1a1a30; border-radius:12px; overflow:hidden; cursor:pointer; box-shadow:0 4px 15px rgba(0,0,0,0.4); }
+        
+        .movies { display:flex; flex-wrap:wrap; gap:14px; padding:0 16px 40px; }
+        .movie-card {
+            width:140px; background:#1a1a30; border-radius:14px; overflow:hidden; cursor:pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+        }
+        .movie-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(255,45,149,0.35); }
         .movie-card img { width:100%; height:200px; object-fit:cover; }
         .movie-card .info { padding:10px; font-size:13px; }
+        
+        .player { display:none; position:fixed; inset:0; background:#000; z-index:1000; flex-direction:column; }
+        .close-player {
+            position:absolute; top:15px; right:15px; background:white; color:black;
+            border:none; width:42px; height:42px; border-radius:50%; font-size:24px; cursor:pointer;
+        }
     </style>
 </head>
 <body>
@@ -25,17 +56,27 @@
         <input type="text" id="searchInput" class="search" placeholder="Поиск фильмов...">
     </div>
 
+    <!-- Hero -->
+    <div class="hero" id="hero">
+        <div class="hero-content">
+            <h2 id="heroTitle" style="margin-bottom:8px;"></h2>
+            <button onclick="watchHero()" style="background:#ff2d95;color:white;border:none;padding:12px 28px;border-radius:30px;font-weight:bold;font-size:15px;">▶ Смотреть сейчас</button>
+        </div>
+    </div>
+
     <div class="genres" id="genres"></div>
     <div class="movies" id="movies"></div>
 
-    <div class="player" id="player" style="display:none; position:fixed; inset:0; background:#000; z-index:1000; flex-direction:column;">
-        <button onclick="closePlayer()" style="position:absolute;top:15px;right:15px;background:white;color:black;border:none;width:40px;height:40px;border-radius:50%;font-size:24px;">✕</button>
-        <iframe id="ytPlayer" frameborder="0" allowfullscreen style="width:100%;flex:1;"></iframe>
+    <!-- Плеер -->
+    <div class="player" id="player">
+        <button class="close-player" onclick="closePlayer()">✕</button>
+        <iframe id="ytPlayer" frameborder="0" allowfullscreen></iframe>
     </div>
 
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hcwhr8uypBI8Ha2rI1dyaLdA5DVY3ffjfHzNoUlvnfqMOjMmD7Fe1yrTRzwxhCI3Us4XmBBRUisD/pub?output=csv";
         let allMovies = [];
+        let currentHero = null;
 
         async function loadMovies() {
             const res = await fetch(CSV_URL);
@@ -53,6 +94,12 @@
                 };
             }).filter(m => m.title && m.youtubeId);
 
+            // Hero (берём случайный фильм)
+            currentHero = allMovies[Math.floor(Math.random() * allMovies.length)];
+            const hero = document.getElementById('hero');
+            hero.style.backgroundImage = `url('${currentHero.posterUrl}')`;
+            document.getElementById('heroTitle').textContent = currentHero.title;
+
             renderGenres();
             renderMovies(allMovies);
 
@@ -66,7 +113,7 @@
 
         function renderGenres() {
             const genresDiv = document.getElementById('genres');
-            const genres = ['all', 'horror', 'comedy', 'drama', 'thriller', 'scifi', 'classic'];
+            const genres = ['all','horror','comedy','drama','thriller','scifi','classic'];
             genresDiv.innerHTML = genres.map(g => `
                 <button class="genre-btn ${g==='all'?'active':''}" data-genre="${g}">
                     ${g === 'all' ? 'Все' : g}
@@ -99,6 +146,10 @@
             const iframe = document.getElementById('ytPlayer');
             iframe.src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`;
             player.style.display = 'flex';
+        }
+
+        function watchHero() {
+            if (currentHero) playMovie(currentHero.youtubeId);
         }
 
         function closePlayer() {
